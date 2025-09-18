@@ -83,6 +83,15 @@ app.use('/api/certificates', certificateRoutes)
 app.use('/api/upload', uploadRoutes)
 app.use('/api/practice', practiceRoutes)
 
+// src/server.js
+app.get("/", (req, res) => {
+  res.json({
+    success: true,
+    message: "Edunexs LearnSphere API is running 🚀",
+  });
+});
+
+
 // Error handling middleware
 app.use(notFound)
 app.use(errorHandler)
