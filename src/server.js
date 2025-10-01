@@ -26,11 +26,15 @@ import practiceRoutes from './routes/practiceRoutes.js'
 // Load environment variables
 dotenv.config()
 
-// Connect to database
-connectDB()
+// Connect to database and wait for connection
+await connectDB()
 
 // Create Express app
 const app = express()
+
+// Configure trust proxy for Vercel deployment
+app.set('trust proxy', 1)
+
 const server = createServer(app)
 
 // Setup Socket.IO
@@ -65,8 +69,8 @@ app.use(cookieParser())
 
 // Health check endpoint
 app.get('/health', (req, res) => {
-  res.status(200).json({ 
-    status: 'OK', 
+  res.status(200).json({
+    status: 'OK',
     message: 'Edunexs LearnSphere API is running',
     timestamp: new Date().toISOString()
   })

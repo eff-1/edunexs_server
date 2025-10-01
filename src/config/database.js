@@ -2,18 +2,28 @@ import mongoose from 'mongoose'
 
 const connectDB = async () => {
   try {
+    // Check if already connected
+    if (mongoose.connections[0].readyState) {
+      console.log('📦 MongoDB already connected')
+      return
+    }
+
     // Check if MongoDB URI is properly configured
     if (!process.env.MONGODB_URI || process.env.MONGODB_URI.includes('username:password')) {
       console.log('⚠️  MongoDB URI not configured properly')
       console.log('⚠️  Server will run without database connection')
       console.log('⚠️  Please update MONGODB_URI in your .env file')
-      return
+      throw new Error('MongoDB URI not configured')
     }
 
     console.log('🔄 Attempting to connect to MongoDB...')
     
+    // Configure mongoose for serverless
+    mongoose.set('bufferCommands', false)
+    mongoose.set('bufferMaxEntries', 0)
+    
     const conn = await mongoose.connect(process.env.MONGODB_URI, {
-      serverSelectionTimeoutMS: 10000, // 10 seconds
+      serverSelectionTimeoutMS: 5000, // 5 seconds for faster timeout
       socketTimeoutMS: 45000, // 45 seconds
       bufferCommands: false,
       maxPoolSize: 10
