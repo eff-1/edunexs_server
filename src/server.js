@@ -8,9 +8,9 @@ import { Server } from 'socket.io'
 import dotenv from 'dotenv'
 
 // Import configurations and middleware
+import connectDB from './config/database.js'
 import { errorHandler, notFound } from './middleware/errorMiddleware.js'
 import { setupSocketHandlers } from './sockets/socketHandlers.js'
-import ensureDBConnection from './middleware/dbMiddleware.js'
 
 // Import routes
 import authRoutes from './routes/authRoutes.js'
@@ -25,6 +25,9 @@ import practiceRoutes from './routes/practiceRoutes.js'
 
 // Load environment variables
 dotenv.config()
+
+// Connect to database
+connectDB()
 
 // Create Express app
 const app = express()
@@ -73,16 +76,16 @@ app.get('/health', (req, res) => {
   })
 })
 
-// API Routes - with database connection middleware
-app.use('/api/auth', ensureDBConnection, authRoutes)
-app.use('/api/courses', ensureDBConnection, courseRoutes)
-app.use('/api/users', ensureDBConnection, userRoutes)
-app.use('/api/enrollments', ensureDBConnection, enrollmentRoutes)
-app.use('/api/quizzes', ensureDBConnection, quizRoutes)
-app.use('/api/progress', ensureDBConnection, progressRoutes)
-app.use('/api/certificates', ensureDBConnection, certificateRoutes)
-app.use('/api/upload', ensureDBConnection, uploadRoutes)
-app.use('/api/practice', ensureDBConnection, practiceRoutes)
+// API Routes
+app.use('/api/auth', authRoutes)
+app.use('/api/courses', courseRoutes)
+app.use('/api/users', userRoutes)
+app.use('/api/enrollments', enrollmentRoutes)
+app.use('/api/quizzes', quizRoutes)
+app.use('/api/progress', progressRoutes)
+app.use('/api/certificates', certificateRoutes)
+app.use('/api/upload', uploadRoutes)
+app.use('/api/practice', practiceRoutes)
 
 // src/server.js
 app.get("/", (req, res) => {
