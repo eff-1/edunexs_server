@@ -6,6 +6,10 @@ dist/
 .out/
 .next/
 .vercel/
+# 
+.env
+.env.local
+.env.production
 
 # Logs
 npm-debug.log*
@@ -15,3 +19,6 @@ yarn-error.log*
 # OS
 .DS_Store
 Thumbs.db
+.env
+.env.local
+.env.production
