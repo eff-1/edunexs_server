@@ -76,7 +76,7 @@ app.get('/health', (req, res) => {
   })
 })
 
-// API Routes
+// API Routes 
 app.use('/api/auth', authRoutes)
 app.use('/api/courses', courseRoutes)
 app.use('/api/users', userRoutes)
@@ -87,7 +87,7 @@ app.use('/api/certificates', certificateRoutes)
 app.use('/api/upload', uploadRoutes)
 app.use('/api/practice', practiceRoutes)
 
-// src/server.js
+// src/server.js 
 app.get("/", (req, res) => {
   res.json({
     success: true,
