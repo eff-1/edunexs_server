@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken'
 import User from '../models/User.js'
 import EmailVerification from '../models/EmailVerification.js'
 import { generateOTP, sendVerificationEmail, sendWelcomeEmail } from '../services/emailService.js'
+import { sendVerificationEmailRender, sendWelcomeEmailRender } from '../services/renderEmailService.js'
 import { protect } from '../middleware/authMiddleware.js'
 
 const router = express.Router()
@@ -95,8 +96,10 @@ router.post('/register', async (req, res) => {
 
     await verification.save()
 
-    // Send verification email
-    const emailResult = await sendVerificationEmail(email, otp, name)
+    // Send verification email (use Render service in production)
+    const emailResult = process.env.NODE_ENV === 'production' 
+      ? await sendVerificationEmailRender(email, otp, name)
+      : await sendVerificationEmail(email, otp, name)
     
     if (!emailResult.success) {
       console.error('Failed to send verification email:', emailResult.error)
@@ -205,8 +208,12 @@ router.post('/verify-email', async (req, res) => {
       { expiresIn: '7d' }
     )
 
-    // Send welcome email
-    await sendWelcomeEmail(user.email, user.name, user.role)
+    // Send welcome email (use Render service in production)
+    if (process.env.NODE_ENV === 'production') {
+      await sendWelcomeEmailRender(user.email, user.name, user.role)
+    } else {
+      await sendWelcomeEmail(user.email, user.name, user.role)
+    }
 
     // Return user data (excluding password)
     const userResponse = {
@@ -275,8 +282,10 @@ router.post('/resend-otp', async (req, res) => {
     verification.expiresAt = new Date(Date.now() + 5 * 60 * 1000) // 5 minutes from now
     await verification.save()
 
-    // Send new verification email
-    const emailResult = await sendVerificationEmail(email, newOtp, verification.userData.name)
+    // Send new verification email (use Render service in production)
+    const emailResult = process.env.NODE_ENV === 'production'
+      ? await sendVerificationEmailRender(email, newOtp, verification.userData.name)
+      : await sendVerificationEmail(email, newOtp, verification.userData.name)
     
     if (!emailResult.success) {
       return res.status(500).json({
