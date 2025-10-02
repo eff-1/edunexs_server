@@ -171,16 +171,12 @@ router.post('/verify-email', async (req, res) => {
 
     // OTP is correct, create user
     const { userData } = verification
-    
-    // Hash password
-    const salt = await bcrypt.genSalt(10)
-    const hashedPassword = await bcrypt.hash(userData.password, salt)
 
-    // Create user
+    // Create user (password will be hashed by User model pre-save hook)
     const user = new User({
       name: userData.name,
       email: userData.email,
-      password: hashedPassword,
+      password: userData.password,
       role: userData.role,
       country: userData.country,
       academicLevel: userData.academicLevel,
@@ -231,10 +227,8 @@ router.post('/verify-email', async (req, res) => {
     res.status(201).json({
       success: true,
       message: 'Email verified successfully! Welcome to Edunexs LearnSphere!',
-      data: {
-        user: userResponse,
-        token
-      }
+      user: userResponse,
+      token
     })
 
   } catch (error) {
@@ -320,8 +314,8 @@ router.post('/login', async (req, res) => {
       })
     }
 
-    // Find user
-    const user = await User.findOne({ email: email.toLowerCase() })
+    // Find user and include password field
+    const user = await User.findOne({ email: email.toLowerCase() }).select('+password')
     if (!user) {
       return res.status(400).json({
         success: false,
@@ -389,10 +383,8 @@ router.post('/login', async (req, res) => {
     res.status(200).json({
       success: true,
       message: 'Login successful',
-      data: {
-        user: userResponse,
-        token
-      }
+      user: userResponse,
+      token
     })
 
   } catch (error) {
