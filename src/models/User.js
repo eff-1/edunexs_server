@@ -62,23 +62,6 @@ const userSchema = new mongoose.Schema({
     required: [true, 'Academic level is required']
   },
   
-  // Tutor-specific fields
-  specialization: {
-    type: String,
-    enum: ['mathematics', 'physics', 'chemistry', 'biology', 'english', 'economics', 'geography', 'history', 'multiple'],
-    required: function() { return this.role === 'tutor' }
-  },
-  experience: {
-    type: String,
-    enum: ['0-1', '1-3', '3-5', '5-10', '10+'],
-    required: function() { return this.role === 'tutor' }
-  },
-  qualifications: {
-    type: String,
-    required: function() { return this.role === 'tutor' },
-    maxlength: [1000, 'Qualifications cannot exceed 1000 characters']
-  },
-  
   // Student-specific fields
   targetExams: [{
     examCode: String,
@@ -90,10 +73,25 @@ const userSchema = new mongoose.Schema({
       default: 'medium'
     }
   }],
-  academicLevel: {
+  
+  // Tutor-specific fields (only required for tutors)
+  specialization: {
     type: String,
-    enum: ['Secondary', 'Pre-University', 'University', 'Graduate'],
-    required: true
+    enum: ['mathematics', 'physics', 'chemistry', 'biology', 'english', 'economics', 'geography', 'history', 'multiple', ''],
+    required: false,
+    default: ''
+  },
+  experience: {
+    type: String,
+    enum: ['0-1', '1-3', '3-5', '5-10', '10+', ''],
+    required: false,
+    default: ''
+  },
+  qualifications: {
+    type: String,
+    required: false,
+    maxlength: [1000, 'Qualifications cannot exceed 1000 characters'],
+    default: ''
   },
   studyPreferences: {
     studyHours: {
@@ -110,54 +108,10 @@ const userSchema = new mongoose.Schema({
       enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
     }]
   },
-  // For tutors
-  tutorProfile: {
-    specializations: [String], // exam codes they can teach
-    subjects: [String],
-    experience: Number, // years
-    qualifications: [String],
-    hourlyRate: {
-      amount: Number,
-      currency: {
-        type: String,
-        default: 'USD'
-      }
-    },
-    availability: [{
-      day: String,
-      timeSlots: [{
-        start: String,
-        end: String
-      }]
-    }],
-    rating: {
-      average: {
-        type: Number,
-        default: 0
-      },
-      count: {
-        type: Number,
-        default: 0
-      }
-    },
-    isVerified: {
-      type: Boolean,
-      default: false
-    },
-    languages: [String]
-  },
-  isEmailVerified: {
-    type: Boolean,
-    default: false
-  },
+  // Additional fields
   emailVerificationToken: String,
   passwordResetToken: String,
   passwordResetExpires: Date,
-  lastLogin: Date,
-  isActive: {
-    type: Boolean,
-    default: true
-  },
   
   // Login tracking
   lastLogin: {
