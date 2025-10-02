@@ -1,17 +1,13 @@
 import nodemailer from 'nodemailer'
 
-// Render-optimized email service with timeout and fallback
+// Render-compatible configuration
 const createRenderTransporter = () => {
   return nodemailer.createTransport({
-    service: 'gmail', // Use service instead of host/port
+    service: 'gmail', // Let nodemailer handle SMTP details
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS
-    },
-    timeout: 10000, // 10 second timeout
-    connectionTimeout: 10000,
-    greetingTimeout: 5000,
-    socketTimeout: 10000
+    }
   })
 }
 
@@ -22,10 +18,7 @@ export const sendVerificationEmailRender = async (email, otp, name = '') => {
     
     const transporter = createRenderTransporter()
     
-    // Test connection first
-    console.log('🔄 Testing SMTP connection...')
-    await transporter.verify()
-    console.log('✅ SMTP connection verified')
+    // Skip connection test - directly send email
 
     const mailOptions = {
       from: `"Edunexs LearnSphere" <${process.env.EMAIL_USER}>`,
@@ -59,10 +52,8 @@ export const sendVerificationEmailRender = async (email, otp, name = '') => {
   } catch (error) {
     console.error('❌ Email sending failed:', error.message)
     
-    // Return success anyway to prevent blocking registration
-    // User can request resend if needed
-    console.log('⚠️ Continuing registration despite email failure')
-    return { success: true, messageId: 'fallback-' + Date.now() }
+    // FAIL the registration if email cannot be sent
+    return { success: false, error: error.message }
   }
 }
 
