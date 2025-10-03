@@ -3,8 +3,7 @@ import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import User from '../models/User.js'
 import EmailVerification from '../models/EmailVerification.js'
-import { generateOTP, sendVerificationEmail, sendWelcomeEmail, sendPasswordResetEmail } from '../services/emailService.js'
-import { sendVerificationEmailSmart, sendWelcomeEmailSmart, sendPasswordResetEmailSmart } from '../services/emailFallbackService.js'
+import { generateOTP, sendVerificationEmail, sendWelcomeEmail } from '../services/emailService.js'
 import { protect } from '../middleware/authMiddleware.js'
 
 const router = express.Router()
@@ -99,8 +98,8 @@ router.post('/register', async (req, res) => {
     await verification.save()
     console.log('✅ Verification record saved:', verification._id, 'OTP:', verification.otp)
 
-    // Send verification email (always use smart fallback: Resend first, Gmail if quota exceeded)
-    const emailResult = await sendVerificationEmailSmart(email, otp, name)
+    // Send verification email via Gmail SMTP
+    const emailResult = await sendVerificationEmail(email, otp, name)
     
     if (!emailResult.success) {
       console.error('Failed to send verification email:', emailResult.error)
@@ -225,8 +224,8 @@ router.post('/verify-email', async (req, res) => {
       { expiresIn: '7d' }
     )
 
-    // Send welcome email (always use smart fallback: Resend first, Gmail if quota exceeded)
-    await sendWelcomeEmailSmart(user.email, user.name, user.role)
+    // Send welcome email via Gmail SMTP
+    await sendWelcomeEmail(user.email, user.name, user.role)
 
     // Return user data (excluding password)
     const userResponse = {
@@ -295,8 +294,8 @@ router.post('/resend-otp', async (req, res) => {
     verification.expiresAt = new Date(Date.now() + 5 * 60 * 1000) // 5 minutes from now
     await verification.save()
 
-    // Send new verification email (always use smart fallback: Resend first, Gmail if quota exceeded)
-    const emailResult = await sendVerificationEmailSmart(email, newOtp, verification.userData.name)
+    // Send new verification email via Gmail SMTP
+    const emailResult = await sendVerificationEmail(email, newOtp, verification.userData.name)
     
     if (!emailResult.success) {
       return res.status(500).json({
@@ -495,8 +494,8 @@ router.post('/forgot-password', async (req, res) => {
       { upsert: true, new: true }
     )
 
-    // Send password reset email (always use smart fallback: Resend first, Gmail if quota exceeded)
-    const emailResult = await sendPasswordResetEmailSmart(email, resetOTP, user.name)
+    // Send password reset email via Resend
+    const emailResult = await sendPasswordResetEmailResend(email, resetOTP, user.name)
 
     if (!emailResult.success) {
       return res.status(500).json({
