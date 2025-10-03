@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import User from '../models/User.js'
 import EmailVerification from '../models/EmailVerification.js'
-import { generateOTP, sendVerificationEmail, sendWelcomeEmail } from '../services/emailService.js'
+import { generateOTP, sendVerificationEmail, sendWelcomeEmail, sendPasswordResetEmail } from '../services/emailService.js'
 import { protect } from '../middleware/authMiddleware.js'
 
 const router = express.Router()
@@ -224,8 +224,14 @@ router.post('/verify-email', async (req, res) => {
       { expiresIn: '7d' }
     )
 
-    // Send welcome email via Gmail SMTP
-    await sendWelcomeEmail(user.email, user.name, user.role)
+    // Send welcome email via Gmail SMTP (non-blocking)
+    try {
+      await sendWelcomeEmail(user.email, user.name, user.role)
+      console.log('✅ Welcome email sent successfully')
+    } catch (emailError) {
+      console.log('⚠️ Welcome email failed (non-critical):', emailError.message)
+      // Don't block registration completion for email issues
+    }
 
     // Return user data (excluding password)
     const userResponse = {
@@ -494,8 +500,8 @@ router.post('/forgot-password', async (req, res) => {
       { upsert: true, new: true }
     )
 
-    // Send password reset email via Resend
-    const emailResult = await sendPasswordResetEmailResend(email, resetOTP, user.name)
+    // Send password reset email via Gmail SMTP
+    const emailResult = await sendPasswordResetEmail(email, resetOTP, user.name)
 
     if (!emailResult.success) {
       return res.status(500).json({
