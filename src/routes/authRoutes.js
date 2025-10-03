@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken'
 import User from '../models/User.js'
 import EmailVerification from '../models/EmailVerification.js'
 import { generateOTP, sendVerificationEmail, sendWelcomeEmail } from '../services/emailService.js'
-import { sendVerificationEmailResend, sendWelcomeEmailResend } from '../services/resendService.js'
+import { sendVerificationEmailSmart, sendWelcomeEmailSmart } from '../services/emailFallbackService.js'
 import { protect } from '../middleware/authMiddleware.js'
 
 const router = express.Router()
@@ -96,9 +96,9 @@ router.post('/register', async (req, res) => {
 
     await verification.save()
 
-    // Send verification email (use Resend in production - no spam issues!)
+    // Send verification email (smart fallback: Resend first, Gmail if quota exceeded)
     const emailResult = process.env.NODE_ENV === 'production' 
-      ? await sendVerificationEmailResend(email, otp, name)
+      ? await sendVerificationEmailSmart(email, otp, name)
       : await sendVerificationEmail(email, otp, name)
     
     if (!emailResult.success) {
@@ -208,9 +208,9 @@ router.post('/verify-email', async (req, res) => {
       { expiresIn: '7d' }
     )
 
-    // Send welcome email (use Resend in production - no spam issues!)
+    // Send welcome email (smart fallback: Resend first, Gmail if quota exceeded)
     if (process.env.NODE_ENV === 'production') {
-      await sendWelcomeEmailResend(user.email, user.name, user.role)
+      await sendWelcomeEmailSmart(user.email, user.name, user.role)
     } else {
       await sendWelcomeEmail(user.email, user.name, user.role)
     }
@@ -282,9 +282,9 @@ router.post('/resend-otp', async (req, res) => {
     verification.expiresAt = new Date(Date.now() + 5 * 60 * 1000) // 5 minutes from now
     await verification.save()
 
-    // Send new verification email (use Resend in production - no spam issues!)
+    // Send new verification email (smart fallback: Resend first, Gmail if quota exceeded)
     const emailResult = process.env.NODE_ENV === 'production'
-      ? await sendVerificationEmailResend(email, newOtp, verification.userData.name)
+      ? await sendVerificationEmailSmart(email, newOtp, verification.userData.name)
       : await sendVerificationEmail(email, newOtp, verification.userData.name)
     
     if (!emailResult.success) {
