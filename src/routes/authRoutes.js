@@ -3,8 +3,8 @@ import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import User from '../models/User.js'
 import EmailVerification from '../models/EmailVerification.js'
-import { generateOTP, sendVerificationEmail, sendWelcomeEmail } from '../services/emailService.js'
-import { sendVerificationEmailSmart, sendWelcomeEmailSmart } from '../services/emailFallbackService.js'
+import { generateOTP, sendVerificationEmail, sendWelcomeEmail, sendPasswordResetEmail } from '../services/emailService.js'
+import { sendVerificationEmailSmart, sendWelcomeEmailSmart, sendPasswordResetEmailSmart } from '../services/emailFallbackService.js'
 import { protect } from '../middleware/authMiddleware.js'
 
 const router = express.Router()
@@ -12,6 +12,7 @@ const router = express.Router()
 // Register user and send verification email
 router.post('/register', async (req, res) => {
   try {
+    console.log('📝 Registration request received:', req.body.email)
     const {
       name,
       email,
@@ -91,15 +92,15 @@ router.post('/register', async (req, res) => {
     const verification = new EmailVerification({
       email: email.toLowerCase(),
       otp,
-      userData
+      userData,
+      expiresAt: new Date(Date.now() + 5 * 60 * 1000) // 5 minutes from now
     })
 
     await verification.save()
+    console.log('✅ Verification record saved:', verification._id, 'OTP:', verification.otp)
 
-    // Send verification email (smart fallback: Resend first, Gmail if quota exceeded)
-    const emailResult = process.env.NODE_ENV === 'production' 
-      ? await sendVerificationEmailSmart(email, otp, name)
-      : await sendVerificationEmail(email, otp, name)
+    // Send verification email (always use smart fallback: Resend first, Gmail if quota exceeded)
+    const emailResult = await sendVerificationEmailSmart(email, otp, name)
     
     if (!emailResult.success) {
       console.error('Failed to send verification email:', emailResult.error)
@@ -130,6 +131,7 @@ router.post('/register', async (req, res) => {
 // Verify email with OTP
 router.post('/verify-email', async (req, res) => {
   try {
+    console.log('🔍 Verification request received:', req.body.email, 'OTP:', req.body.otp)
     const { email, otp } = req.body
 
     if (!email || !otp) {
@@ -140,15 +142,30 @@ router.post('/verify-email', async (req, res) => {
     }
 
     // Find verification record
+    console.log('🔍 Looking for verification record for:', email.toLowerCase())
     const verification = await EmailVerification.findOne({
       email: email.toLowerCase(),
       isUsed: false
     })
+    
+    console.log('📊 Verification record found:', verification ? 'YES' : 'NO')
+    if (verification) {
+      console.log('📝 Record details - OTP:', verification.otp, 'Expires:', verification.expiresAt, 'Now:', new Date())
+    }
 
     if (!verification) {
       return res.status(400).json({
         success: false,
         message: 'Verification code expired or not found. Please request a new code.'
+      })
+    }
+
+    // Check if verification has expired
+    if (verification.expiresAt < new Date()) {
+      await EmailVerification.deleteOne({ _id: verification._id })
+      return res.status(400).json({
+        success: false,
+        message: 'Verification code has expired. Please request a new code.'
       })
     }
 
@@ -208,12 +225,8 @@ router.post('/verify-email', async (req, res) => {
       { expiresIn: '7d' }
     )
 
-    // Send welcome email (smart fallback: Resend first, Gmail if quota exceeded)
-    if (process.env.NODE_ENV === 'production') {
-      await sendWelcomeEmailSmart(user.email, user.name, user.role)
-    } else {
-      await sendWelcomeEmail(user.email, user.name, user.role)
-    }
+    // Send welcome email (always use smart fallback: Resend first, Gmail if quota exceeded)
+    await sendWelcomeEmailSmart(user.email, user.name, user.role)
 
     // Return user data (excluding password)
     const userResponse = {
@@ -282,10 +295,8 @@ router.post('/resend-otp', async (req, res) => {
     verification.expiresAt = new Date(Date.now() + 5 * 60 * 1000) // 5 minutes from now
     await verification.save()
 
-    // Send new verification email (smart fallback: Resend first, Gmail if quota exceeded)
-    const emailResult = process.env.NODE_ENV === 'production'
-      ? await sendVerificationEmailSmart(email, newOtp, verification.userData.name)
-      : await sendVerificationEmail(email, newOtp, verification.userData.name)
+    // Send new verification email (always use smart fallback: Resend first, Gmail if quota exceeded)
+    const emailResult = await sendVerificationEmailSmart(email, newOtp, verification.userData.name)
     
     if (!emailResult.success) {
       return res.status(500).json({
@@ -444,6 +455,138 @@ router.post('/logout', protect, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Server error during logout'
+    })
+  }
+})
+
+// Forgot Password - Send reset email
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email is required'
+      })
+    }
+
+    // Check if user exists
+    const user = await User.findOne({ email })
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'No account found with this email address'
+      })
+    }
+
+    // Generate reset OTP
+    const resetOTP = generateOTP()
+    
+    // Store reset OTP in EmailVerification collection (reusing existing structure)
+    await EmailVerification.findOneAndUpdate(
+      { email },
+      {
+        email,
+        otp: resetOTP,
+        userData: { name: user.name, type: 'password-reset' },
+        expiresAt: new Date(Date.now() + 5 * 60 * 1000) // 5 minutes
+      },
+      { upsert: true, new: true }
+    )
+
+    // Send password reset email (always use smart fallback: Resend first, Gmail if quota exceeded)
+    const emailResult = await sendPasswordResetEmailSmart(email, resetOTP, user.name)
+
+    if (!emailResult.success) {
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to send reset email. Please try again.'
+      })
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Password reset code sent to your email'
+    })
+
+  } catch (error) {
+    console.error('Forgot password error:', error)
+    res.status(500).json({
+      success: false,
+      message: 'Server error. Please try again later.'
+    })
+  }
+})
+
+// Reset Password with OTP
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body
+
+    if (!email || !otp || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email, OTP, and new password are required'
+      })
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 6 characters long'
+      })
+    }
+
+    // Find and verify OTP
+    const verification = await EmailVerification.findOne({ email, otp })
+    
+    if (!verification) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or expired reset code'
+      })
+    }
+
+    // Check if OTP is expired
+    if (verification.expiresAt < new Date()) {
+      await EmailVerification.deleteOne({ email })
+      return res.status(400).json({
+        success: false,
+        message: 'Reset code has expired. Please request a new one.'
+      })
+    }
+
+    // Find user and update password
+    const user = await User.findOne({ email })
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      })
+    }
+
+    // Hash new password
+    const saltRounds = 12
+    const hashedPassword = await bcrypt.hash(newPassword, saltRounds)
+
+    // Update user password
+    user.password = hashedPassword
+    await user.save()
+
+    // Clean up verification record
+    await EmailVerification.deleteOne({ email })
+
+    res.status(200).json({
+      success: true,
+      message: 'Password reset successfully. You can now login with your new password.'
+    })
+
+  } catch (error) {
+    console.error('Reset password error:', error)
+    res.status(500).json({
+      success: false,
+      message: 'Server error. Please try again later.'
     })
   }
 })

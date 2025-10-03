@@ -26,13 +26,13 @@ const emailVerificationSchema = new mongoose.Schema({
   },
   expiresAt: {
     type: Date,
-    default: Date.now
+    required: true
   }
 }, {
   timestamps: true
 })
 
-// Index for automatic cleanup
+// Index for automatic cleanup - documents expire at the expiresAt time
 emailVerificationSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 })
 
 export default mongoose.model('EmailVerification', emailVerificationSchema)

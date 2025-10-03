@@ -137,7 +137,70 @@ export const sendWelcomeEmailResend = async (email, name, role) => {
   }
 }
 
+export const sendPasswordResetEmailResend = async (email, otp, name) => {
+  try {
+    console.log(`📧 Sending password reset email via Resend to ${email}`)
+    
+    // Initialize Resend with API key
+    const resend = new Resend(process.env.RESEND_API_KEY)
+    
+    const { data, error } = await resend.emails.send({
+      from: 'onboarding@resend.dev',
+      to: [email],
+      subject: 'Reset Your Password - Edunexs LearnSphere',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
+          <div style="background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+            <div style="text-align: center; margin-bottom: 30px;">
+              <h1 style="color: #3B82F6; margin: 0; font-size: 28px;">🎓 Edunexs LearnSphere</h1>
+              <p style="color: #6B7280; margin: 10px 0 0 0;">Your Exam Preparation Platform</p>
+            </div>
+            
+            <h2 style="color: #1F2937; margin-bottom: 20px;">Password Reset Request</h2>
+            
+            <p style="color: #374151; font-size: 16px; line-height: 1.6;">Hi ${name}, we received a request to reset your password. Use the code below to set a new password:</p>
+            
+            <div style="background: linear-gradient(135deg, #EF4444, #DC2626); padding: 25px; text-align: center; margin: 30px 0; border-radius: 8px;">
+              <p style="color: white; margin: 0 0 10px 0; font-size: 14px; font-weight: 500;">Your Reset Code</p>
+              <div style="background: white; display: inline-block; padding: 15px 25px; border-radius: 6px; margin: 10px 0;">
+                <span style="font-size: 32px; font-weight: bold; color: #DC2626; letter-spacing: 4px; font-family: 'Courier New', monospace;">${otp}</span>
+              </div>
+              <p style="color: #FEE2E2; margin: 10px 0 0 0; font-size: 12px;">This code expires in 5 minutes</p>
+            </div>
+            
+            <div style="background-color: #FEF3C7; border: 1px solid #F59E0B; border-radius: 6px; padding: 15px; margin: 20px 0;">
+              <p style="color: #92400E; margin: 0; font-size: 14px;">⚠️ <strong>Security Notice:</strong> If you didn't request this password reset, please ignore this email and your password will remain unchanged.</p>
+            </div>
+            
+            <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #E5E7EB;">
+              <p style="color: #6B7280; font-size: 12px; margin: 0;">Need help? Contact us at support@edunexs.com</p>
+              <p style="color: #9CA3AF; font-size: 11px; margin: 10px 0 0 0;">© 2024 Edunexs LearnSphere. All rights reserved.</p>
+            </div>
+          </div>
+        </div>
+      `,
+      text: `Password Reset - Edunexs LearnSphere. Hi ${name}, use this code to reset your password: ${otp}. This code expires in 5 minutes. If you didn't request this, please ignore this email.`
+    })
+
+    if (error) {
+      console.error('❌ Resend password reset email failed:', error)
+      return { success: false, error: error.message }
+    }
+
+    console.log('✅ Resend password reset email sent:', data.id)
+    return { 
+      success: true, 
+      messageId: data.id
+    }
+    
+  } catch (error) {
+    console.error('❌ Resend password reset email error:', error.message)
+    return { success: false, error: error.message }
+  }
+}
+
 export default {
   sendVerificationEmailResend,
-  sendWelcomeEmailResend
+  sendWelcomeEmailResend,
+  sendPasswordResetEmailResend
 }
