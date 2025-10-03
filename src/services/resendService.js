@@ -1,12 +1,12 @@
 import { Resend } from 'resend'
 
-// Initialize Resend with API key
-const resend = new Resend(process.env.RESEND_API_KEY || 're_test')
-
 // Resend email service - 99% inbox delivery, no spam issues!
 export const sendVerificationEmailResend = async (email, otp, name = '') => {
   try {
     console.log(`📧 Sending verification email via Resend to ${email}`)
+    
+    // Initialize Resend with API key
+    const resend = new Resend(process.env.RESEND_API_KEY)
     
     const { data, error } = await resend.emails.send({
       from: 'onboarding@resend.dev',
@@ -66,6 +66,9 @@ export const sendVerificationEmailResend = async (email, otp, name = '') => {
 export const sendWelcomeEmailResend = async (email, name, role) => {
   try {
     console.log(`📧 Sending welcome email via Resend to ${email}`)
+    
+    // Initialize Resend with API key
+    const resend = new Resend(process.env.RESEND_API_KEY)
     
     const { data, error } = await resend.emails.send({
       from: 'onboarding@resend.dev',
