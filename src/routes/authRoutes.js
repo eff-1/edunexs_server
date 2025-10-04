@@ -132,27 +132,6 @@ router.post('/register', async (req, res) => {
         ...(!emailSent && { otp: otp })
       }
     })
-      email: user.email,
-      role: user.role,
-      country: user.country,
-      academicLevel: user.academicLevel,
-      targetExams: user.targetExams,
-      specialization: user.specialization,
-      experience: user.experience,
-      qualifications: user.qualifications,
-      isEmailVerified: user.isEmailVerified,
-      emailVerifiedAt: user.emailVerifiedAt,
-      createdAt: user.createdAt
-    }
-
-    res.status(201).json({
-      success: true,
-      message: 'Registration successful! You are now logged in.',
-      data: {
-        user: userResponse,
-        token: token
-      }
-    })
 
   } catch (error) {
     console.error('Registration error:', error)
