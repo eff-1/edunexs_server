@@ -98,32 +98,59 @@ router.post('/register', async (req, res) => {
     await verification.save()
     console.log('✅ Verification record saved:', verification._id, 'OTP:', verification.otp)
 
-    // Send verification email via Gmail SMTP (non-blocking for local development)
+    // Send verification email (with skip option for testing)
     let emailSent = false
-    try {
-      const emailResult = await sendVerificationEmail(email, otp, name)
-      if (emailResult.success) {
-        console.log('✅ Verification email sent successfully:', emailResult.messageId)
-        emailSent = true
-      } else {
-        console.log('⚠️ Email sending failed (non-critical for local dev):', emailResult.error)
+    
+    if (process.env.SKIP_EMAILS === 'true') {
+      console.log('📧 Email sending disabled via SKIP_EMAILS flag')
+      emailSent = false
+    } else {
+      try {
+        const emailResult = await sendVerificationEmail(email, otp, name)
+        if (emailResult.success) {
+          console.log('✅ Verification email sent successfully:', emailResult.messageId)
+          emailSent = true
+        } else {
+          console.log('⚠️ Email sending failed (non-critical):', emailResult.error)
+        }
+      } catch (emailError) {
+        console.log('⚠️ Email service unavailable (non-critical):', emailError.message)
       }
-    } catch (emailError) {
-      console.log('⚠️ Email service unavailable (non-critical for local dev):', emailError.message)
     }
 
-    // Always return success - user can still verify with OTP
+    // Always return success - user can verify with OTP
     res.status(200).json({
       success: true,
       message: emailSent 
         ? 'Registration successful! Please check your email for verification code.'
-        : 'Registration successful! Use OTP: ' + otp + ' to verify (email service temporarily unavailable).',
+        : 'Registration successful! Use OTP: ' + otp + ' to verify your account.',
       data: {
         email: email.toLowerCase(),
         expiresIn: 300, // 5 minutes
         emailSent: emailSent,
-        // For development only - remove in production
-        ...(process.env.NODE_ENV === 'development' && !emailSent && { otp: otp })
+        // Show OTP when email not sent
+        ...(!emailSent && { otp: otp })
+      }
+    })
+      email: user.email,
+      role: user.role,
+      country: user.country,
+      academicLevel: user.academicLevel,
+      targetExams: user.targetExams,
+      specialization: user.specialization,
+      experience: user.experience,
+      qualifications: user.qualifications,
+      isEmailVerified: user.isEmailVerified,
+      emailVerifiedAt: user.emailVerifiedAt,
+      createdAt: user.createdAt
+    }
+
+    res.status(201).json({
+      success: true,
+      message: 'Registration successful! You are now logged in.',
+      data: {
+        user: userResponse,
+        token: token
       }
     })
 
