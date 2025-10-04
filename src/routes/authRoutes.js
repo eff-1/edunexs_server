@@ -66,14 +66,11 @@ router.post('/register', async (req, res) => {
       })
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 12)
-
-    // Create user directly without email verification
+    // Create user directly without email verification (password will be hashed by User model)
     const user = new User({
       name,
       email: email.toLowerCase(),
-      password: hashedPassword,
+      password: password, // Let User model handle hashing
       role,
       country,
       academicLevel,
