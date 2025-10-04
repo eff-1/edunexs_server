@@ -66,23 +66,8 @@ router.post('/register', async (req, res) => {
       })
     }
 
-    // Generate OTP
-    const otp = generateOTP()
-    console.log(`Generated OTP for ${email}: ${otp}`) // For development - remove in production
-
-    // Prepare user data
-    const userData = {
-      name,
-      email: email.toLowerCase(),
-      password,
-      role,
-      country,
-      academicLevel,
-      targetExams: targetExams || [],
-      specialization,
-      experience,
-      qualifications
-    }
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 12)
 
     // Create user directly without email verification
     const user = new User({
