@@ -84,169 +84,35 @@ router.post('/register', async (req, res) => {
       qualifications
     }
 
-    // Delete any existing verification for this email
-    await EmailVerification.deleteMany({ email: email.toLowerCase() })
-
-    // Create new verification record
-    const verification = new EmailVerification({
-      email: email.toLowerCase(),
-      otp,
-      userData,
-      expiresAt: new Date(Date.now() + 5 * 60 * 1000) // 5 minutes from now
-    })
-
-    await verification.save()
-    console.log('✅ Verification record saved:', verification._id, 'OTP:', verification.otp)
-
-    // Send verification email (with skip option for testing)
-    let emailSent = false
-    
-    if (process.env.SKIP_EMAILS === 'true') {
-      console.log('📧 Email sending disabled via SKIP_EMAILS flag')
-      emailSent = false
-    } else {
-      try {
-        const emailResult = await sendVerificationEmail(email, otp, name)
-        if (emailResult.success) {
-          console.log('✅ Verification email sent successfully:', emailResult.messageId)
-          emailSent = true
-        } else {
-          console.log('⚠️ Email sending failed (non-critical):', emailResult.error)
-        }
-      } catch (emailError) {
-        console.log('⚠️ Email service unavailable (non-critical):', emailError.message)
-      }
-    }
-
-    // Always return success - user can verify with OTP
-    res.status(200).json({
-      success: true,
-      message: emailSent 
-        ? 'Registration successful! Please check your email for verification code.'
-        : 'Registration successful! Use OTP: ' + otp + ' to verify your account.',
-      data: {
-        email: email.toLowerCase(),
-        expiresIn: 300, // 5 minutes
-        emailSent: emailSent,
-        // Show OTP when email not sent
-        ...(!emailSent && { otp: otp })
-      }
-    })
-
-  } catch (error) {
-    console.error('Registration error:', error)
-    res.status(500).json({
-      success: false,
-      message: 'Server error during registration'
-    })
-  }
-})
-
-// Verify email with OTP
-router.post('/verify-email', async (req, res) => {
-  try {
-    console.log('🔍 Verification request received:', req.body.email, 'OTP:', req.body.otp)
-    const { email, otp } = req.body
-
-    if (!email || !otp) {
-      return res.status(400).json({
-        success: false,
-        message: 'Email and OTP are required'
-      })
-    }
-
-    // Find verification record
-    console.log('🔍 Looking for verification record for:', email.toLowerCase())
-    const verification = await EmailVerification.findOne({
-      email: email.toLowerCase(),
-      isUsed: false
-    })
-    
-    console.log('📊 Verification record found:', verification ? 'YES' : 'NO')
-    if (verification) {
-      console.log('📝 Record details - OTP:', verification.otp, 'Expires:', verification.expiresAt, 'Now:', new Date())
-    }
-
-    if (!verification) {
-      return res.status(400).json({
-        success: false,
-        message: 'Verification code expired or not found. Please request a new code.'
-      })
-    }
-
-    // Check if verification has expired
-    if (verification.expiresAt < new Date()) {
-      await EmailVerification.deleteOne({ _id: verification._id })
-      return res.status(400).json({
-        success: false,
-        message: 'Verification code has expired. Please request a new code.'
-      })
-    }
-
-    // Check attempts
-    if (verification.attempts >= 5) {
-      await EmailVerification.deleteOne({ _id: verification._id })
-      return res.status(400).json({
-        success: false,
-        message: 'Too many failed attempts. Please request a new verification code.'
-      })
-    }
-
-    // Verify OTP
-    if (verification.otp !== otp) {
-      verification.attempts += 1
-      await verification.save()
-      
-      return res.status(400).json({
-        success: false,
-        message: `Invalid verification code. ${5 - verification.attempts} attempts remaining.`
-      })
-    }
-
-    // OTP is correct, create user
-    const { userData } = verification
-
-    // Create user (password will be hashed by User model pre-save hook)
+    // Create user directly without email verification
     const user = new User({
-      name: userData.name,
-      email: userData.email,
-      password: userData.password,
-      role: userData.role,
-      country: userData.country,
-      academicLevel: userData.academicLevel,
-      targetExams: userData.targetExams,
-      specialization: userData.specialization,
-      experience: userData.experience,
-      qualifications: userData.qualifications,
-      isEmailVerified: true,
-      isActive: true
+      name,
+      email: email.toLowerCase(),
+      password: hashedPassword,
+      role,
+      country,
+      academicLevel,
+      targetExams: targetExams || [],
+      specialization,
+      experience,
+      qualifications,
+      isEmailVerified: true, // Auto-verify since we're skipping email verification
+      emailVerifiedAt: new Date()
     })
 
     await user.save()
+    console.log('✅ User created successfully:', user.email)
 
-    // Mark verification as used
-    verification.isUsed = true
-    await verification.save()
-
-    // Generate JWT token
+    // Generate JWT token for immediate login
     const token = jwt.sign(
       { 
-        userId: user._id,
-        email: user.email,
-        role: user.role
+        userId: user._id, 
+        email: user.email, 
+        role: user.role 
       },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     )
-
-    // Send welcome email via Gmail SMTP (non-blocking)
-    try {
-      await sendWelcomeEmail(user.email, user.name, user.role)
-      console.log('✅ Welcome email sent successfully')
-    } catch (emailError) {
-      console.log('⚠️ Welcome email failed (non-critical):', emailError.message)
-      // Don't block registration completion for email issues
-    }
 
     // Return user data (excluding password)
     const userResponse = {
@@ -259,97 +125,33 @@ router.post('/verify-email', async (req, res) => {
       targetExams: user.targetExams,
       specialization: user.specialization,
       experience: user.experience,
+      qualifications: user.qualifications,
       isEmailVerified: user.isEmailVerified,
-      isActive: user.isActive,
+      emailVerifiedAt: user.emailVerifiedAt,
       createdAt: user.createdAt
     }
 
     res.status(201).json({
       success: true,
-      message: 'Email verified successfully! Welcome to Edunexs LearnSphere!',
-      user: userResponse,
-      token
-    })
-
-  } catch (error) {
-    console.error('Email verification error:', error)
-    res.status(500).json({
-      success: false,
-      message: 'Server error during email verification'
-    })
-  }
-})
-
-// Resend OTP
-router.post('/resend-otp', async (req, res) => {
-  try {
-    const { email } = req.body
-
-    if (!email) {
-      return res.status(400).json({
-        success: false,
-        message: 'Email is required'
-      })
-    }
-
-    // Find existing verification
-    const verification = await EmailVerification.findOne({
-      email: email.toLowerCase(),
-      isUsed: false
-    })
-
-    if (!verification) {
-      return res.status(400).json({
-        success: false,
-        message: 'No pending verification found for this email'
-      })
-    }
-
-    // Generate new OTP
-    const newOtp = generateOTP()
-    console.log(`Generated new OTP for ${email}: ${newOtp}`) // For development
-
-    // Update verification record
-    verification.otp = newOtp
-    verification.attempts = 0
-    verification.expiresAt = new Date(Date.now() + 5 * 60 * 1000) // 5 minutes from now
-    await verification.save()
-
-    // Send new verification email via Gmail SMTP (non-blocking)
-    let emailSent = false
-    try {
-      const emailResult = await sendVerificationEmail(email, newOtp, verification.userData.name)
-      if (emailResult.success) {
-        console.log('✅ New verification email sent successfully')
-        emailSent = true
-      } else {
-        console.log('⚠️ Email resend failed (non-critical):', emailResult.error)
-      }
-    } catch (emailError) {
-      console.log('⚠️ Email service unavailable for resend:', emailError.message)
-    }
-
-    res.status(200).json({
-      success: true,
-      message: emailSent 
-        ? 'New verification code sent to your email'
-        : 'New verification code generated. Use OTP: ' + newOtp + ' (email service temporarily unavailable)',
+      message: 'Registration successful! You are now logged in.',
       data: {
-        expiresIn: 300, // 5 minutes
-        emailSent: emailSent,
-        // For development only - remove in production
-        ...(process.env.NODE_ENV === 'development' && !emailSent && { otp: newOtp })
+        user: userResponse,
+        token: token
       }
     })
 
   } catch (error) {
-    console.error('Resend OTP error:', error)
+    console.error('Registration error:', error)
     res.status(500).json({
       success: false,
-      message: 'Server error while resending verification code'
+      message: 'Server error during registration'
     })
   }
 })
+
+// Email verification removed - users are auto-verified on registration
+
+// Resend OTP endpoint removed - no longer needed without email verification
 
 // Login user
 router.post('/login', async (req, res) => {
@@ -372,13 +174,7 @@ router.post('/login', async (req, res) => {
       })
     }
 
-    // Check if email is verified
-    if (!user.isEmailVerified) {
-      return res.status(400).json({
-        success: false,
-        message: 'Please verify your email before logging in'
-      })
-    }
+    // Email verification removed - all users can login directly
 
     // Check if account is active
     if (!user.isActive) {
