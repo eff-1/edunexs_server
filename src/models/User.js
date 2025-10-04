@@ -74,24 +74,80 @@ const userSchema = new mongoose.Schema({
     }
   }],
   
-  // Tutor-specific fields (only required for tutors)
+  // Tutor-specific fields (enhanced for comprehensive tutor management)
   specialization: {
     type: String,
     enum: ['mathematics', 'physics', 'chemistry', 'biology', 'english', 'economics', 'geography', 'history', 'multiple', ''],
     required: false,
     default: ''
   },
+  
+  // Multiple subjects for tutors
+  subjects: [{
+    name: String,
+    level: {
+      type: String,
+      enum: ['beginner', 'intermediate', 'advanced', 'expert']
+    },
+    certifications: [String]
+  }],
+  
   experience: {
     type: String,
     enum: ['0-1', '1-3', '3-5', '5-10', '10+', ''],
     required: false,
     default: ''
   },
-  qualifications: {
-    type: String,
-    required: false,
-    maxlength: [1000, 'Qualifications cannot exceed 1000 characters'],
-    default: ''
+  
+  // Enhanced qualifications - now supports multiple entries
+  qualifications: [{
+    degree: String,
+    institution: String,
+    year: Number,
+    field: String,
+    grade: String
+  }],
+  
+  // Additional tutor fields
+  tutorProfile: {
+    hourlyRate: {
+      type: Number,
+      default: 0
+    },
+    availability: [{
+      day: String,
+      startTime: String,
+      endTime: String
+    }],
+    languages: [String],
+    teachingStyle: String,
+    bio: {
+      type: String,
+      maxlength: [1000, 'Bio cannot exceed 1000 characters']
+    },
+    verified: {
+      type: Boolean,
+      default: false
+    },
+    verificationDate: Date,
+    rating: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 5
+    },
+    totalRatings: {
+      type: Number,
+      default: 0
+    },
+    studentsCount: {
+      type: Number,
+      default: 0
+    },
+    sessionsCompleted: {
+      type: Number,
+      default: 0
+    }
   },
   studyPreferences: {
     studyHours: {

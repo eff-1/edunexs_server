@@ -5,6 +5,7 @@ import User from '../models/User.js'
 import EmailVerification from '../models/EmailVerification.js'
 import { generateOTP, sendVerificationEmail, sendWelcomeEmail, sendPasswordResetEmail } from '../services/emailService.js'
 import { protect } from '../middleware/authMiddleware.js'
+import whatsappService from '../services/whatsappService.js'
 
 const router = express.Router()
 
@@ -84,6 +85,28 @@ router.post('/register', async (req, res) => {
 
     await user.save()
     console.log('✅ User created successfully:', user.email)
+
+    // Send WhatsApp notification for tutor signups
+    if (role === 'tutor') {
+      try {
+        const tutorData = {
+          name,
+          email,
+          phone: req.body.phone || 'Not provided',
+          country,
+          academicLevel,
+          specialization,
+          experience,
+          qualifications
+        }
+        
+        const whatsappResult = await whatsappService.notifyTutorSignup(tutorData)
+        console.log('📱 WhatsApp notification result:', whatsappResult.success ? 'Sent' : 'Failed')
+      } catch (whatsappError) {
+        console.error('WhatsApp notification error:', whatsappError)
+        // Don't block registration if WhatsApp fails
+      }
+    }
 
     // Generate JWT token for immediate login
     const token = jwt.sign(
