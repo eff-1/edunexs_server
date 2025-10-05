@@ -185,12 +185,33 @@ router.post('/login', async (req, res) => {
     }
 
     // Find user and include password field
-    const user = await User.findOne({ email: email.toLowerCase() }).select('+password')
+    let user = await User.findOne({ email: email.toLowerCase() }).select('+password')
     if (!user) {
       return res.status(400).json({
         success: false,
         message: 'Invalid email or password'
       })
+    }
+
+    // Fix legacy data on the fly
+    let needsSave = false
+    if (typeof user.qualifications === 'string') {
+      user.qualifications = []
+      needsSave = true
+    }
+    if (!Array.isArray(user.subjects)) {
+      user.subjects = []
+      needsSave = true
+    }
+    
+    // Save fixes if needed
+    if (needsSave) {
+      try {
+        await user.save()
+        console.log('✅ Fixed legacy data for user:', user.email)
+      } catch (saveError) {
+        console.log('⚠️ Could not fix legacy data, but continuing login:', saveError.message)
+      }
     }
 
     // Email verification removed - all users can login directly

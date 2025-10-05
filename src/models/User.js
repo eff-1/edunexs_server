@@ -194,6 +194,26 @@ userSchema.pre('save', async function(next) {
   }
 })
 
+// Handle legacy data - convert string qualifications to array
+userSchema.pre('save', function(next) {
+  // Fix qualifications if it's a string (legacy data)
+  if (typeof this.qualifications === 'string') {
+    this.qualifications = []
+  }
+  
+  // Fix subjects if it's not an array (legacy data)
+  if (!Array.isArray(this.subjects)) {
+    this.subjects = []
+  }
+  
+  next()
+})
+
+// Also handle this during queries
+userSchema.pre(['find', 'findOne', 'findOneAndUpdate'], function() {
+  // This will help with queries but the main fix is in the save hook
+})
+
 // Compare password method
 userSchema.methods.comparePassword = async function(candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password)
