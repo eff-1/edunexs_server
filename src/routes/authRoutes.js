@@ -13,9 +13,10 @@ const router = express.Router()
 router.get('/health', (req, res) => {
   res.json({
     success: true,
-    message: 'Auth service is running',
+    message: 'Auth service is running - Updated',
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development'
+    environment: process.env.NODE_ENV || 'development',
+    version: '1.0.1'
   })
 })
 

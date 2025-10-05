@@ -1,61 +1,67 @@
 import fetch from 'node-fetch'
 
-const API_BASE = 'http://localhost:5003/api/auth'
-
 async function testSimpleRegistration() {
-  console.log('🧪 Testing Simple Registration (No Email Verification)')
+  console.log('🧪 Testing Simple Registration')
   
-  const testUser = {
+  const simpleUser = {
     name: 'Test User',
-    email: 'testuser@example.com',
+    email: 'simple-test@example.com',
     password: 'password123',
     role: 'student',
     country: 'Nigeria',
     academicLevel: 'undergraduate',
-    targetExams: ['JAMB'],
-    specialization: 'Science'
+    targetExams: [{
+      examCode: 'JAMB',
+      subjects: ['Mathematics', 'Physics'],
+      targetYear: 2025,
+      priority: 'high'
+    }]
   }
 
   try {
-    // Test Registration
-    console.log('\n📝 Testing Registration...')
-    const registerResponse = await fetch(`${API_BASE}/register`, {
+    console.log('📝 Attempting registration with minimal data...')
+    const response = await fetch('https://edunexs-server.onrender.com/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(testUser)
+      body: JSON.stringify(simpleUser)
     })
 
-    const registerData = await registerResponse.json()
-    console.log('Registration Response:', registerData)
+    const data = await response.json()
+    console.log('Registration Status:', response.status)
+    console.log('Registration Response:', data)
 
-    if (registerData.success) {
+    if (response.status === 201 && data.success) {
       console.log('✅ Registration successful!')
-      console.log('🎫 Token received:', registerData.data.token ? 'YES' : 'NO')
-      console.log('👤 User data:', registerData.data.user.email)
+      console.log('User created:', data.data.user.email)
+      console.log('Token received:', data.data.token ? 'YES' : 'NO')
       
-      // Test Login with same credentials
-      console.log('\n🔐 Testing Login...')
-      const loginResponse = await fetch(`${API_BASE}/login`, {
+      // Test login with the same credentials
+      console.log('\n🔐 Testing login with registered user...')
+      const loginResponse = await fetch('https://edunexs-server.onrender.com/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email: testUser.email,
-          password: testUser.password
+          email: simpleUser.email,
+          password: simpleUser.password
         })
       })
 
       const loginData = await loginResponse.json()
+      console.log('Login Status:', loginResponse.status)
       console.log('Login Response:', loginData)
 
       if (loginData.success) {
         console.log('✅ Login successful!')
-        console.log('🎫 Login token received:', loginData.token ? 'YES' : 'NO')
+        console.log('🎉 Both registration and login are working!')
       } else {
         console.log('❌ Login failed:', loginData.message)
       }
 
     } else {
-      console.log('❌ Registration failed:', registerData.message)
+      console.log('❌ Registration failed')
+      if (data.error) {
+        console.log('Error details:', data.error)
+      }
     }
 
   } catch (error) {
