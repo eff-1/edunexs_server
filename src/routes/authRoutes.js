@@ -9,6 +9,16 @@ import whatsappService from '../services/whatsappService.js'
 
 const router = express.Router()
 
+// Health check endpoint
+router.get('/health', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Auth service is running',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development'
+  })
+})
+
 // Register user and send verification email
 router.post('/register', async (req, res) => {
   try {
@@ -147,9 +157,12 @@ router.post('/register', async (req, res) => {
 
   } catch (error) {
     console.error('Registration error:', error)
+    console.error('Error stack:', error.stack)
+    console.error('Error message:', error.message)
     res.status(500).json({
       success: false,
-      message: 'Server error during registration'
+      message: 'Server error during registration',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     })
   }
 })
@@ -239,9 +252,12 @@ router.post('/login', async (req, res) => {
 
   } catch (error) {
     console.error('Login error:', error)
+    console.error('Error stack:', error.stack)
+    console.error('Error message:', error.message)
     res.status(500).json({
       success: false,
-      message: 'Server error during login'
+      message: 'Server error during login',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     })
   }
 })
