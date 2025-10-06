@@ -48,23 +48,24 @@ Registration Time: ${new Date().toLocaleString()}
 
 Please contact this tutor for interview and onboarding.`
 
-      // Method 1: Try to send via WhatsApp Web API (if available)
+      console.log('=== 🎓 NEW TUTOR REGISTRATION NOTIFICATION ===')
+      console.log(`📱 Sending to: ${this.adminWhatsApp}`)
+      
+      // Method 1: Try to send via CallMeBot WhatsApp API
       const whatsappSent = await this.sendViaWhatsAppAPI(message)
       
-      // Method 2: Send via Email as backup (to your email)
-      const emailSent = await this.sendViaEmail(message, tutorData)
-      
-      // Method 3: Create a webhook endpoint for external WhatsApp bots
+      // Method 2: Store in webhook system (backup/web interface)
       await this.createWebhookNotification(message, tutorData)
+      
+      // Method 3: Email backup (if needed)
+      const emailSent = whatsappSent ? false : await this.sendViaEmail(message, tutorData)
 
-      // Always log for debugging
-      console.log('=== TUTOR REGISTRATION NOTIFICATION ===')
-      console.log(`To: ${this.adminWhatsApp}`)
-      console.log('Message:')
-      console.log(message)
-      console.log('WhatsApp API:', whatsappSent ? 'Sent' : 'Failed')
-      console.log('Email Backup:', emailSent ? 'Sent' : 'Failed')
-      console.log('==========================================')
+      // Detailed logging
+      console.log('📊 Notification Results:')
+      console.log(`  📱 WhatsApp (CallMeBot): ${whatsappSent ? '✅ Sent' : '❌ Failed'}`)
+      console.log(`  🌐 Web Interface: ✅ Available`)
+      console.log(`  📧 Email Backup: ${emailSent ? '✅ Sent' : '⏭️ Skipped'}`)
+      console.log('================================================')
 
       return { 
         success: true, 
@@ -83,30 +84,43 @@ Please contact this tutor for interview and onboarding.`
 
   async sendViaWhatsAppAPI(message) {
     try {
-      // Option 1: Use a WhatsApp API service like Twilio, MessageBird, or WhatsApp Business API
-      // For now, we'll use a simple HTTP request to a webhook service
-      
-      // You can use services like:
-      // - CallMeBot (free): https://www.callmebot.com/blog/free-api-whatsapp-messages/
-      // - Twilio WhatsApp API
-      // - WhatsApp Business API
-      
-      // Example with CallMeBot (you need to set this up first)
       const callMeBotAPI = process.env.CALLMEBOT_API_KEY
-      if (callMeBotAPI) {
-        const response = await axios.get(`https://api.callmebot.com/whatsapp.php`, {
-          params: {
-            phone: this.adminWhatsApp.replace('+', ''),
-            text: message,
-            apikey: callMeBotAPI
-          }
-        })
-        return response.status === 200
+      const adminPhone = process.env.ADMIN_WHATSAPP_NUMBER || '2348128653553'
+      
+      if (!callMeBotAPI || callMeBotAPI === 'your_api_key_here') {
+        console.log('⚠️ CallMeBot API key not configured. Please set CALLMEBOT_API_KEY in .env')
+        return false
+      }
+
+      console.log(`📱 Sending WhatsApp message via CallMeBot to ${adminPhone}`)
+      
+      // CallMeBot API call
+      const response = await axios.get(`https://api.callmebot.com/whatsapp.php`, {
+        params: {
+          phone: adminPhone,
+          text: message.substring(0, 1000), // Limit message length
+          apikey: callMeBotAPI
+        },
+        timeout: 10000 // 10 second timeout
+      })
+      
+      if (response.status === 200) {
+        console.log('✅ WhatsApp message sent successfully via CallMeBot')
+        return true
+      } else {
+        console.log('❌ CallMeBot API returned non-200 status:', response.status)
+        return false
+      }
+    } catch (error) {
+      console.error('❌ WhatsApp API error:', error.message)
+      
+      // Log specific error types
+      if (error.code === 'ECONNABORTED') {
+        console.log('⏰ Request timeout - CallMeBot might be slow')
+      } else if (error.response) {
+        console.log('📡 CallMeBot API error:', error.response.status, error.response.data)
       }
       
-      return false
-    } catch (error) {
-      console.error('WhatsApp API error:', error)
       return false
     }
   }
