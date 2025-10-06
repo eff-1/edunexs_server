@@ -1,4 +1,4 @@
-const axios = require('axios')
+import axios from 'axios'
 
 class WhatsAppService {
   constructor() {
@@ -88,4 +88,4 @@ Please contact this tutor for interview and onboarding.`
   }
 }
 
-module.exports = new WhatsAppService()
+export default new WhatsAppService()
