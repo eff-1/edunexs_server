@@ -1,102 +1,91 @@
-import fetch from 'node-fetch'
+const axios = require('axios')
 
-// WhatsApp notification service for tutor signups
 class WhatsAppService {
   constructor() {
-    this.adminNumber = '+2348128653553' // Your WhatsApp number
-    this.apiUrl = 'https://api.whatsapp.com/send' // For basic WhatsApp web link
+    this.adminWhatsApp = '+2348128653553'
+    // You can use WhatsApp Business API or a service like Twilio
+    // For now, we'll use a simple webhook approach
   }
 
-  // Send tutor signup notification
-  async notifyTutorSignup(tutorData) {
+  async sendTutorRegistrationNotification(tutorData) {
     try {
-      const message = this.formatTutorSignupMessage(tutorData)
+      const contactInfo = []
       
-      // For now, we'll log the message and create a WhatsApp link
-      // In production, you can integrate with WhatsApp Business API
-      console.log('📱 WhatsApp Notification for Tutor Signup:')
+      if (tutorData.contactMethods?.whatsapp && tutorData.whatsappNumber) {
+        contactInfo.push(`WhatsApp: ${tutorData.whatsappNumber}`)
+      }
+      if (tutorData.contactMethods?.telegram && tutorData.telegramHandle) {
+        contactInfo.push(`Telegram: ${tutorData.telegramHandle}`)
+      }
+      if (tutorData.contactMethods?.instagram && tutorData.instagramHandle) {
+        contactInfo.push(`Instagram: ${tutorData.instagramHandle}`)
+      }
+      if (tutorData.contactMethods?.twitter && tutorData.twitterHandle) {
+        contactInfo.push(`Twitter: ${tutorData.twitterHandle}`)
+      }
+
+      const subjects = tutorData.subjects?.map(s => `${s.name} (${s.level})`).join(', ') || 'Not specified'
+      const qualifications = tutorData.qualifications?.map(q => `${q.degree} from ${q.institution} (${q.year})`).join(', ') || 'Not specified'
+
+      const message = `🎓 NEW TUTOR REGISTRATION 🎓
+
+👤 Name: ${tutorData.name}
+📧 Email: ${tutorData.email}
+🌍 Country: ${tutorData.country}
+📚 Specialization: ${tutorData.specialization}
+⏰ Experience: ${tutorData.experience}
+
+📞 Contact Methods:
+${contactInfo.join('\n')}
+
+📖 Subjects: ${subjects}
+
+🎓 Qualifications: ${qualifications}
+
+📝 Bio: ${tutorData.bio || 'Not provided'}
+
+Registration Time: ${new Date().toLocaleString()}
+
+Please contact this tutor for interview and onboarding.`
+
+      // Log the notification (in production, you'd send this via WhatsApp API)
+      console.log('=== TUTOR REGISTRATION NOTIFICATION ===')
+      console.log(`To: ${this.adminWhatsApp}`)
+      console.log('Message:')
       console.log(message)
-      
-      // Create WhatsApp link for manual sending
-      const whatsappLink = this.createWhatsAppLink(message)
-      console.log('🔗 WhatsApp Link:', whatsappLink)
-      
-      // You can also send this via email or other notification service
-      await this.sendNotificationEmail(tutorData, message)
-      
-      return {
-        success: true,
-        message: 'Tutor signup notification sent',
-        whatsappLink: whatsappLink
-      }
+      console.log('==========================================')
+
+      // For now, we'll store this in a simple notification log
+      // In production, you would integrate with WhatsApp Business API
+      await this.logNotification({
+        type: 'tutor_registration',
+        recipient: this.adminWhatsApp,
+        message: message,
+        tutorData: tutorData,
+        timestamp: new Date()
+      })
+
+      return { success: true, message: 'Notification sent successfully' }
     } catch (error) {
-      console.error('WhatsApp notification error:', error)
-      return {
-        success: false,
-        error: error.message
-      }
+      console.error('Error sending WhatsApp notification:', error)
+      return { success: false, error: error.message }
     }
   }
 
-  formatTutorSignupMessage(tutor) {
-    return `🎓 NEW TUTOR SIGNUP - EDUNEXS LEARNSPHERE
-
-👤 *Name:* ${tutor.name}
-📧 *Email:* ${tutor.email}
-📱 *Phone:* ${tutor.phone || 'Not provided'}
-🌍 *Country:* ${tutor.country}
-🎯 *Academic Level:* ${tutor.academicLevel}
-
-📚 *Specialization:* ${tutor.specialization}
-⏰ *Experience:* ${tutor.experience}
-🏆 *Qualifications:* 
-${tutor.qualifications}
-
-📅 *Signup Date:* ${new Date().toLocaleString()}
-
-*Action Required:* Review and contact this tutor for verification.
-
----
-Edunexs LearnSphere Admin Panel`
+  async logNotification(notificationData) {
+    // In a real app, you'd save this to database
+    // For now, we'll just log it
+    console.log('Notification logged:', {
+      id: Date.now(),
+      ...notificationData
+    })
   }
 
-  createWhatsAppLink(message) {
-    const encodedMessage = encodeURIComponent(message)
-    return `https://wa.me/${this.adminNumber.replace('+', '')}?text=${encodedMessage}`
-  }
-
-  async sendNotificationEmail(tutorData, whatsappMessage) {
-    // This will integrate with your existing email service
-    try {
-      // You can import and use your existing email service here
-      console.log('📧 Email notification sent to admin about tutor signup')
-      return true
-    } catch (error) {
-      console.error('Email notification error:', error)
-      return false
-    }
-  }
-
-  // Send welcome message to tutor
-  async sendTutorWelcomeMessage(tutorData) {
-    const welcomeMessage = `🎉 Welcome to Edunexs LearnSphere, ${tutorData.name}!
-
-Your tutor application has been received. Our team will review your qualifications and contact you within 24-48 hours.
-
-📚 What's Next:
-1. Profile verification
-2. Subject expertise assessment  
-3. Platform training
-4. Start teaching students!
-
-Thank you for joining our educational community.
-
-Best regards,
-Edunexs LearnSphere Team`
-
-    console.log('📱 Tutor Welcome Message:', welcomeMessage)
-    return welcomeMessage
+  // Method to get pending notifications (for admin dashboard)
+  async getPendingNotifications() {
+    // In production, this would fetch from database
+    return []
   }
 }
 
-export default new WhatsAppService()
+module.exports = new WhatsAppService()

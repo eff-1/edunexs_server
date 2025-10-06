@@ -90,6 +90,14 @@ router.post('/register', async (req, res) => {
       specialization,
       experience,
       qualifications,
+      // Contact information for tutors
+      contactMethods: req.body.contactMethods || {},
+      whatsappNumber: req.body.whatsappNumber || '',
+      telegramHandle: req.body.telegramHandle || '',
+      instagramHandle: req.body.instagramHandle || '',
+      twitterHandle: req.body.twitterHandle || '',
+      subjects: req.body.subjects || [],
+      bio: req.body.bio || '',
       isEmailVerified: true, // Auto-verify since we're skipping email verification
       emailVerifiedAt: new Date()
     })
@@ -103,15 +111,21 @@ router.post('/register', async (req, res) => {
         const tutorData = {
           name,
           email,
-          phone: req.body.phone || 'Not provided',
           country,
           academicLevel,
           specialization,
           experience,
-          qualifications
+          qualifications,
+          contactMethods: req.body.contactMethods || {},
+          whatsappNumber: req.body.whatsappNumber || '',
+          telegramHandle: req.body.telegramHandle || '',
+          instagramHandle: req.body.instagramHandle || '',
+          twitterHandle: req.body.twitterHandle || '',
+          subjects: req.body.subjects || [],
+          bio: req.body.bio || ''
         }
         
-        const whatsappResult = await whatsappService.notifyTutorSignup(tutorData)
+        const whatsappResult = await whatsappService.sendTutorRegistrationNotification(tutorData)
         console.log('📱 WhatsApp notification result:', whatsappResult.success ? 'Sent' : 'Failed')
       } catch (whatsappError) {
         console.error('WhatsApp notification error:', whatsappError)

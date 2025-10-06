@@ -98,6 +98,30 @@ const userSchema = new mongoose.Schema({
     required: false,
     default: ''
   },
+
+  // Contact information for tutors
+  contactMethods: {
+    whatsapp: { type: Boolean, default: false },
+    telegram: { type: Boolean, default: false },
+    instagram: { type: Boolean, default: false },
+    twitter: { type: Boolean, default: false }
+  },
+  whatsappNumber: {
+    type: String,
+    default: ''
+  },
+  telegramHandle: {
+    type: String,
+    default: ''
+  },
+  instagramHandle: {
+    type: String,
+    default: ''
+  },
+  twitterHandle: {
+    type: String,
+    default: ''
+  },
   
   // Enhanced qualifications - now supports multiple entries
   qualifications: [{
