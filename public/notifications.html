@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tutor Registration Notifications</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .notification {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .notification h3 {
+            color: #6366f1;
+            margin-top: 0;
+        }
+        .notification pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+        .refresh-btn {
+            background: #6366f1;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .refresh-btn:hover {
+            background: #5856eb;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .status.success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        .status.error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        .whatsapp-btn {
+            background: #25d366;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            margin-top: 10px;
+        }
+        .whatsapp-btn:hover {
+            background: #128c7e;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎓 Tutor Registration Notifications</h1>
+    <p>This page shows new tutor registrations that need your attention.</p>
+    
+    <button class="refresh-btn" onclick="checkNotifications()">🔄 Check for New Notifications</button>
+    
+    <div id="status"></div>
+    <div id="notifications"></div>
+
+    <script>
+        async function checkNotifications() {
+            const statusDiv = document.getElementById('status');
+            const notificationsDiv = document.getElementById('notifications');
+            
+            statusDiv.innerHTML = '<div class="status">🔍 Checking for notifications...</div>';
+            
+            try {
+                const response = await fetch('/api/webhooks/notifications');
+                const data = await response.json();
+                
+                if (data.success) {
+                    if (data.notifications.length > 0) {
+                        statusDiv.innerHTML = `<div class="status success">✅ Found ${data.notifications.length} new notification(s)!</div>`;
+                        
+                        notificationsDiv.innerHTML = data.notifications.map(notification => `
+                            <div class="notification">
+                                <h3>🎓 New Tutor Registration</h3>
+                                <p><strong>Time:</strong> ${new Date(notification.timestamp).toLocaleString()}</p>
+                                <pre>${notification.message}</pre>
+                                <a href="https://wa.me/2348128653553?text=${encodeURIComponent(notification.message)}" 
+                                   class="whatsapp-btn" target="_blank">
+                                   📱 Send to WhatsApp
+                                </a>
+                            </div>
+                        `).join('');
+                    } else {
+                        statusDiv.innerHTML = '<div class="status success">✅ No new notifications</div>';
+                        notificationsDiv.innerHTML = '<p>No pending notifications at this time.</p>';
+                    }
+                } else {
+                    statusDiv.innerHTML = '<div class="status error">❌ Error loading notifications</div>';
+                }
+            } catch (error) {
+                statusDiv.innerHTML = '<div class="status error">❌ Connection error</div>';
+                console.error('Error:', error);
+            }
+        }
+        
+        // Auto-refresh every 30 seconds
+        setInterval(checkNotifications, 30000);
+        
+        // Check on page load
+        checkNotifications();
+    </script>
+</body>
+</html>

@@ -22,6 +22,7 @@ import progressRoutes from './routes/progressRoutes.js'
 import certificateRoutes from './routes/certificateRoutes.js'
 import uploadRoutes from './routes/uploadRoutes.js'
 import practiceRoutes from './routes/practiceRoutes.js'
+import webhookRoutes from './routes/webhookRoutes.js'
 
 // Load environment variables
 dotenv.config()
@@ -34,6 +35,9 @@ const app = express()
 
 // Configure trust proxy for Vercel deployment
 app.set('trust proxy', 1)
+
+// Serve static files for notifications page
+app.use('/admin', express.static('public'))
 
 const server = createServer(app)
 
@@ -86,6 +90,7 @@ app.use('/api/progress', progressRoutes)
 app.use('/api/certificates', certificateRoutes)
 app.use('/api/upload', uploadRoutes)
 app.use('/api/practice', practiceRoutes)
+app.use('/api/webhooks', webhookRoutes)
 
 // src/server.js 
 app.get("/", (req, res) => {
